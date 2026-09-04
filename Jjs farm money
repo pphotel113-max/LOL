@@ -1,0 +1,260 @@
+-- LocalScript - Roblox Studio
+
+local Players = game:GetService("Players")
+local Lighting = game:GetService("Lighting")
+local RunService = game:GetService("RunService")
+
+local LP = Players.LocalPlayer
+
+--// SETTINGS
+local TELEPORT_DISTANCE = 0.5 -- Khoảng cách rất gần
+local TELEPORT_DELAY = 0.1
+local WALK_SPEED = 50
+
+--// GUI
+local gui = Instance.new("ScreenGui")
+gui.Name = "FarmMoneyJJS"
+gui.ResetOnSpawn = false
+gui.Parent = LP:WaitForChild("PlayerGui")
+
+--// NÚT MỞ MENU
+local openButton = Instance.new("TextButton")
+openButton.Size = UDim2.fromOffset(100, 40)
+openButton.Position = UDim2.fromOffset(15, 150)
+openButton.BackgroundColor3 = Color3.fromRGB(35,35,35)
+openButton.TextColor3 = Color3.new(1,1,1)
+openButton.TextSize = 16
+openButton.Text = "☰ OPEN MENU"
+openButton.Visible = false
+openButton.Parent = gui
+
+--// MENU
+local main = Instance.new("Frame")
+main.Size = UDim2.fromOffset(260, 380)
+main.Position = UDim2.new(0.5, -130, 0.5, -190)
+main.BackgroundColor3 = Color3.fromRGB(25,25,25)
+main.Active = true
+main.Draggable = true
+main.Parent = gui
+
+--// TITLE
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1,-40,0,40)
+title.BackgroundTransparency = 1
+title.Text = "💰 FARM MONEY JJS"
+title.TextColor3 = Color3.new(1,1,1)
+title.TextSize = 20
+title.Parent = main
+
+--// NÚT X
+local closeButton = Instance.new("TextButton")
+closeButton.Size = UDim2.fromOffset(40,40)
+closeButton.Position = UDim2.new(1,-40,0,0)
+closeButton.BackgroundColor3 = Color3.fromRGB(170,40,40)
+closeButton.TextColor3 = Color3.new(1,1,1)
+closeButton.TextSize = 20
+closeButton.Text = "X"
+closeButton.Parent = main
+
+local function button(text, y)
+	local b = Instance.new("TextButton")
+	b.Size = UDim2.new(1,-20,0,45)
+	b.Position = UDim2.fromOffset(10,y)
+	b.BackgroundColor3 = Color3.fromRGB(45,45,45)
+	b.TextColor3 = Color3.new(1,1,1)
+	b.TextSize = 16
+	b.Text = text
+	b.Parent = main
+	return b
+end
+
+local lagButton = button("⚡ FIX LAG",50)
+local speedButton = button("🏃 SPEED: OFF",105)
+local tpButton = button("🔄 TELEPORT ALL: OFF",160)
+local noclipButton = button("👻 NOCLIP: OFF",215)
+
+--// ĐÓNG / MỞ MENU
+closeButton.MouseButton1Click:Connect(function()
+	main.Visible = false
+	openButton.Visible = true
+end)
+
+openButton.MouseButton1Click:Connect(function()
+	main.Visible = true
+	openButton.Visible = false
+end)
+
+--// FIX LAG
+lagButton.MouseButton1Click:Connect(function()
+
+	Lighting.GlobalShadows = false
+
+	for _,v in ipairs(Lighting:GetChildren()) do
+		if v:IsA("PostEffect") then
+			v.Enabled = false
+		end
+	end
+
+	for _,v in ipairs(workspace:GetDescendants()) do
+
+		if v:IsA("ParticleEmitter")
+		or v:IsA("Trail")
+		or v:IsA("Beam")
+		or v:IsA("Smoke")
+		or v:IsA("Fire")
+		or v:IsA("Sparkles") then
+
+			v.Enabled = false
+
+		elseif v:IsA("BasePart") then
+			v.CastShadow = false
+			v.Material = Enum.Material.Plastic
+		end
+	end
+
+	lagButton.Text = "✅ FIX LAG: ON"
+end)
+
+--// SPEED
+local speedEnabled = false
+
+speedButton.MouseButton1Click:Connect(function()
+
+	speedEnabled = not speedEnabled
+
+	local character = LP.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+
+	if speedEnabled then
+		speedButton.Text = "🏃 SPEED: ON"
+
+		if humanoid then
+			humanoid.WalkSpeed = WALK_SPEED
+		end
+	else
+		speedButton.Text = "🏃 SPEED: OFF"
+
+		if humanoid then
+			humanoid.WalkSpeed = 16
+		end
+	end
+end)
+
+--// TELEPORT ALL
+local teleporting = false
+
+local function teleportBehind(player)
+
+	local char = LP.Character
+	local target = player.Character
+
+	if not char or not target then
+		return
+	end
+
+	local root = char:FindFirstChild("HumanoidRootPart")
+	local targetRoot = target:FindFirstChild("HumanoidRootPart")
+
+	if root and targetRoot then
+		root.CFrame =
+			targetRoot.CFrame *
+			CFrame.new(0,0,TELEPORT_DISTANCE)
+	end
+end
+
+tpButton.MouseButton1Click:Connect(function()
+
+	teleporting = not teleporting
+
+	if teleporting then
+
+		tpButton.Text = "🔄 TELEPORT ALL: ON"
+
+		task.spawn(function()
+
+			while teleporting do
+
+				for _,player in ipairs(Players:GetPlayers()) do
+
+					if not teleporting then
+						break
+					end
+
+					if player ~= LP then
+						teleportBehind(player)
+						task.wait(TELEPORT_DELAY)
+					end
+
+				end
+
+			end
+
+		end)
+
+	else
+		tpButton.Text = "🔄 TELEPORT ALL: OFF"
+	end
+end)
+
+--// NOCLIP
+local noclipEnabled = false
+local noclipConnection
+
+local function setNoclip(character, enabled)
+
+	for _,obj in ipairs(character:GetDescendants()) do
+		if obj:IsA("BasePart") then
+			obj.CanCollide = not enabled
+		end
+	end
+end
+
+noclipButton.MouseButton1Click:Connect(function()
+
+	noclipEnabled = not noclipEnabled
+
+	if noclipEnabled then
+
+		noclipButton.Text = "👻 NOCLIP: ON"
+
+		noclipConnection = RunService.Stepped:Connect(function()
+
+			local character = LP.Character
+
+			if character then
+				setNoclip(character,true)
+			end
+
+		end)
+
+	else
+		noclipButton.Text = "👻 NOCLIP: OFF"
+
+		if noclipConnection then
+			noclipConnection:Disconnect()
+			noclipConnection = nil
+		end
+
+		local character = LP.Character
+
+		if character then
+			setNoclip(character,false)
+		end
+	end
+end)
+
+--// GIỮ SPEED SAU RESPAWN
+LP.CharacterAdded:Connect(function(character)
+
+	local humanoid = character:WaitForChild("Humanoid")
+
+	if speedEnabled then
+		humanoid.WalkSpeed = WALK_SPEED
+	end
+
+	if noclipEnabled then
+		task.wait(0.2)
+		setNoclip(character,true)
+	end
+
+end)
