@@ -1,0 +1,633 @@
+-- LocalScript - Roblox Studio
+-- NORMAL PLAYER ESP + TELEPORT + FOLLOW
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local LP = Players.LocalPlayer
+
+--------------------------------------------------
+--// GUI
+--------------------------------------------------
+
+local gui = Instance.new("ScreenGui")
+gui.Name = "SanDiegoESP"
+gui.ResetOnSpawn = false
+gui.IgnoreGuiInset = true
+gui.DisplayOrder = 999
+gui.Parent = LP:WaitForChild("PlayerGui")
+
+--------------------------------------------------
+--// MENU
+--------------------------------------------------
+
+local main = Instance.new("Frame")
+main.Size = UDim2.fromOffset(280, 270)
+main.Position = UDim2.new(0.5, -140, 0.5, -135)
+main.BackgroundColor3 = Color3.fromRGB(25,25,25)
+main.BorderSizePixel = 0
+main.Active = true
+main.Draggable = true
+main.Parent = gui
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1,-40,0,45)
+title.BackgroundTransparency = 1
+title.Text = "👁 PLAYER ESP"
+title.TextColor3 = Color3.new(1,1,1)
+title.TextSize = 18
+title.Font = Enum.Font.GothamBold
+title.Parent = main
+
+--------------------------------------------------
+--// CLOSE
+--------------------------------------------------
+
+local closeButton = Instance.new("TextButton")
+closeButton.Size = UDim2.fromOffset(40,40)
+closeButton.Position = UDim2.new(1,-40,0,0)
+closeButton.BackgroundColor3 = Color3.fromRGB(170,40,40)
+closeButton.Text = "X"
+closeButton.TextColor3 = Color3.new(1,1,1)
+closeButton.TextSize = 20
+closeButton.Parent = main
+
+--------------------------------------------------
+--// OPEN
+--------------------------------------------------
+
+local openButton = Instance.new("TextButton")
+openButton.Size = UDim2.fromOffset(125,40)
+openButton.Position = UDim2.fromOffset(15,150)
+openButton.BackgroundColor3 = Color3.fromRGB(35,35,35)
+openButton.TextColor3 = Color3.new(1,1,1)
+openButton.TextSize = 15
+openButton.Font = Enum.Font.GothamBold
+openButton.Text = "☰ OPEN MENU"
+openButton.Visible = false
+openButton.Parent = gui
+
+closeButton.MouseButton1Click:Connect(function()
+	main.Visible = false
+	openButton.Visible = true
+end)
+
+openButton.MouseButton1Click:Connect(function()
+	main.Visible = true
+	openButton.Visible = false
+end)
+
+--------------------------------------------------
+--// ESP BUTTON
+--------------------------------------------------
+
+local espButton = Instance.new("TextButton")
+espButton.Size = UDim2.new(1,-20,0,50)
+espButton.Position = UDim2.fromOffset(10,60)
+espButton.BackgroundColor3 = Color3.fromRGB(45,45,45)
+espButton.TextColor3 = Color3.new(1,1,1)
+espButton.TextSize = 16
+espButton.Font = Enum.Font.GothamBold
+espButton.Text = "👁 ESP: OFF"
+espButton.Parent = main
+
+--------------------------------------------------
+--// TELEPORT BUTTON
+--------------------------------------------------
+
+local teleportButton = Instance.new("TextButton")
+teleportButton.Size = UDim2.new(1,-20,0,45)
+teleportButton.Position = UDim2.fromOffset(10,115)
+teleportButton.BackgroundColor3 = Color3.fromRGB(45,45,45)
+teleportButton.TextColor3 = Color3.new(1,1,1)
+teleportButton.TextSize = 15
+teleportButton.Font = Enum.Font.GothamBold
+teleportButton.Text = "📍 TELEPORT"
+teleportButton.Parent = main
+
+--------------------------------------------------
+--// FOLLOW BUTTON
+--------------------------------------------------
+
+local followButton = Instance.new("TextButton")
+followButton.Size = UDim2.new(1,-20,0,45)
+followButton.Position = UDim2.fromOffset(10,165)
+followButton.BackgroundColor3 = Color3.fromRGB(45,45,45)
+followButton.TextColor3 = Color3.new(1,1,1)
+followButton.TextSize = 15
+followButton.Font = Enum.Font.GothamBold
+followButton.Text = "🎯 FOLLOW: OFF"
+followButton.Parent = main
+
+--------------------------------------------------
+--// STATUS
+--------------------------------------------------
+
+local status = Instance.new("TextLabel")
+status.Size = UDim2.new(1,-20,0,45)
+status.Position = UDim2.fromOffset(10,215)
+status.BackgroundColor3 = Color3.fromRGB(40,40,40)
+status.TextColor3 = Color3.new(1,1,1)
+status.TextSize = 13
+status.TextWrapped = true
+status.Text = "ESP hiển thị tên và khoảng cách."
+status.Parent = main
+
+--------------------------------------------------
+--// ESP
+--------------------------------------------------
+
+local espEnabled = false
+local espObjects = {}
+
+--------------------------------------------------
+--// TẠO ESP
+--------------------------------------------------
+
+local function createESP(player)
+
+	local character = player.Character
+
+	if not character then
+		return
+	end
+
+	local head = character:FindFirstChild("Head")
+
+	if not head then
+		return
+	end
+
+	local billboard = Instance.new("BillboardGui")
+	billboard.Name = "PlayerESP"
+	billboard.Adornee = head
+	billboard.Size = UDim2.fromOffset(220,60)
+	billboard.StudsOffset = Vector3.new(0,3,0)
+	billboard.AlwaysOnTop = true
+	billboard.Parent = gui
+
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.fromScale(1,1)
+	label.BackgroundTransparency = 1
+	label.TextColor3 = Color3.new(1,1,1)
+	label.TextStrokeColor3 = Color3.new(0,0,0)
+	label.TextStrokeTransparency = 0
+	label.TextSize = 17
+	label.Font = Enum.Font.GothamBold
+	label.Text = player.DisplayName
+	label.Parent = billboard
+
+	espObjects[player] = billboard
+end
+
+--------------------------------------------------
+--// XOÁ ESP
+--------------------------------------------------
+
+local function removeESP(player)
+
+	if espObjects[player] then
+		espObjects[player]:Destroy()
+		espObjects[player] = nil
+	end
+end
+
+--------------------------------------------------
+--// UPDATE ESP
+--------------------------------------------------
+
+local function updateESP()
+
+	local myCharacter = LP.Character
+	local myRoot = myCharacter and
+		myCharacter:FindFirstChild("HumanoidRootPart")
+
+	if not myRoot then
+		return
+	end
+
+	for _, player in ipairs(Players:GetPlayers()) do
+
+		if player ~= LP then
+
+			local character = player.Character
+			local head = character and
+				character:FindFirstChild("Head")
+
+			local root = character and
+				character:FindFirstChild("HumanoidRootPart")
+
+			if espEnabled and head and root then
+
+				if not espObjects[player] then
+					createESP(player)
+				end
+
+				local billboard = espObjects[player]
+
+				if billboard then
+
+					billboard.Adornee = head
+					billboard.Enabled = true
+
+					local distance =
+						(myRoot.Position - root.Position).Magnitude
+
+					local label =
+						billboard:FindFirstChildOfClass("TextLabel")
+
+					if label then
+						label.Text =
+							player.DisplayName
+							.. "\n"
+							.. math.floor(distance)
+							.. " studs"
+					end
+				end
+
+			else
+
+				if espObjects[player] then
+					espObjects[player].Enabled = false
+				end
+			end
+		end
+	end
+end
+
+--------------------------------------------------
+--// ESP ON / OFF
+--------------------------------------------------
+
+espButton.MouseButton1Click:Connect(function()
+
+	espEnabled = not espEnabled
+
+	if espEnabled then
+
+		espButton.Text = "👁 ESP: ON"
+		status.Text = "ESP đang hiển thị tất cả người chơi."
+
+	else
+
+		espButton.Text = "👁 ESP: OFF"
+		status.Text = "ESP đã tắt."
+
+		for _, billboard in pairs(espObjects) do
+			billboard.Enabled = false
+		end
+	end
+end)
+
+--------------------------------------------------
+--// TELEPORT MENU
+--------------------------------------------------
+
+local playerListFrame = Instance.new("Frame")
+playerListFrame.Size = UDim2.fromOffset(270,330)
+playerListFrame.Position = UDim2.new(0.5,-135,0.5,-165)
+playerListFrame.BackgroundColor3 = Color3.fromRGB(25,25,25)
+playerListFrame.BorderSizePixel = 0
+playerListFrame.Visible = false
+playerListFrame.Active = true
+playerListFrame.Draggable = true
+playerListFrame.Parent = gui
+
+local listTitle = Instance.new("TextLabel")
+listTitle.Size = UDim2.new(1,-45,0,45)
+listTitle.BackgroundTransparency = 1
+listTitle.Text = "📍 CHỌN NGƯỜI CHƠI"
+listTitle.TextColor3 = Color3.new(1,1,1)
+listTitle.TextSize = 17
+listTitle.Font = Enum.Font.GothamBold
+listTitle.Parent = playerListFrame
+
+--------------------------------------------------
+--// CLOSE LIST
+--------------------------------------------------
+
+local listClose = Instance.new("TextButton")
+listClose.Size = UDim2.fromOffset(40,40)
+listClose.Position = UDim2.new(1,-40,0,0)
+listClose.BackgroundColor3 = Color3.fromRGB(170,40,40)
+listClose.Text = "X"
+listClose.TextColor3 = Color3.new(1,1,1)
+listClose.TextSize = 20
+listClose.Parent = playerListFrame
+
+--------------------------------------------------
+--// PLAYER SCROLL
+--------------------------------------------------
+
+local playerScroll = Instance.new("ScrollingFrame")
+playerScroll.Size = UDim2.new(1,-20,1,-60)
+playerScroll.Position = UDim2.fromOffset(10,50)
+playerScroll.BackgroundTransparency = 1
+playerScroll.BorderSizePixel = 0
+playerScroll.ScrollBarThickness = 5
+playerScroll.CanvasSize = UDim2.new(0,0,0,0)
+playerScroll.Parent = playerListFrame
+
+local playerLayout = Instance.new("UIListLayout")
+playerLayout.Padding = UDim.new(0,5)
+playerLayout.SortOrder = Enum.SortOrder.Name
+playerLayout.Parent = playerScroll
+
+--------------------------------------------------
+--// PLAYER ĐANG CHỌN
+--------------------------------------------------
+
+local selectedPlayer = nil
+local following = false
+
+--------------------------------------------------
+--// DỊCH CHUYỂN RA SAU
+--------------------------------------------------
+
+local function teleportBehind(player)
+
+	local myCharacter = LP.Character
+	local targetCharacter = player and player.Character
+
+	if not myCharacter or not targetCharacter then
+		return false
+	end
+
+	local myRoot =
+		myCharacter:FindFirstChild("HumanoidRootPart")
+
+	local targetRoot =
+		targetCharacter:FindFirstChild("HumanoidRootPart")
+
+	if not myRoot or not targetRoot then
+		return false
+	end
+
+	-- 4 studs phía sau người chơi
+	myRoot.CFrame =
+		targetRoot.CFrame * CFrame.new(0,0,4)
+
+	return true
+end
+
+--------------------------------------------------
+--// FOLLOW
+--------------------------------------------------
+
+local function stopFollow()
+
+	following = false
+	followButton.Text = "🎯 FOLLOW: OFF"
+
+end
+
+local function startFollow()
+
+	if not selectedPlayer then
+		return
+	end
+
+	following = true
+	followButton.Text = "🎯 FOLLOW: ON"
+
+	teleportBehind(selectedPlayer)
+end
+
+--------------------------------------------------
+--// TẠO DANH SÁCH
+--------------------------------------------------
+
+local function refreshPlayerList()
+
+	for _, child in ipairs(playerScroll:GetChildren()) do
+
+		if child:IsA("TextButton") then
+			child:Destroy()
+		end
+	end
+
+	for _, player in ipairs(Players:GetPlayers()) do
+
+		if player ~= LP then
+
+			local button = Instance.new("TextButton")
+
+			button.Size = UDim2.new(1,-5,0,42)
+			button.BackgroundColor3 = Color3.fromRGB(45,45,45)
+			button.TextColor3 = Color3.new(1,1,1)
+			button.TextSize = 15
+			button.Font = Enum.Font.GothamBold
+
+			button.Text =
+				player.DisplayName
+				.. "  (@"
+				.. player.Name
+				.. ")"
+
+			button.Parent = playerScroll
+
+			button.MouseButton1Click:Connect(function()
+
+				selectedPlayer = player
+
+				-- Dịch chuyển ngay phía sau
+				if teleportBehind(player) then
+
+					status.Text =
+						"Đã dịch chuyển sau "
+						.. player.DisplayName
+
+				else
+
+					status.Text =
+						"Không thể dịch chuyển tới người chơi này."
+
+				end
+
+				playerListFrame.Visible = false
+
+				-- Tự động FOLLOW sau khi chọn
+				startFollow()
+			end)
+		end
+	end
+
+	task.wait()
+
+	playerScroll.CanvasSize = UDim2.new(
+		0,
+		0,
+		0,
+		playerLayout.AbsoluteContentSize.Y + 10
+	)
+end
+
+--------------------------------------------------
+--// MỞ TELEPORT
+--------------------------------------------------
+
+teleportButton.MouseButton1Click:Connect(function()
+
+	refreshPlayerList()
+
+	playerListFrame.Visible = true
+
+end)
+
+--------------------------------------------------
+--// ĐÓNG DANH SÁCH
+--------------------------------------------------
+
+listClose.MouseButton1Click:Connect(function()
+
+	playerListFrame.Visible = false
+
+end)
+
+--------------------------------------------------
+--// FOLLOW ON / OFF
+--------------------------------------------------
+
+followButton.MouseButton1Click:Connect(function()
+
+	if following then
+
+		stopFollow()
+
+		status.Text = "Đã dừng FOLLOW."
+
+	else
+
+		if selectedPlayer then
+
+			startFollow()
+
+			status.Text =
+				"Đang bám theo "
+				.. selectedPlayer.DisplayName
+
+		else
+
+			status.Text =
+				"Hãy chọn người chơi trước."
+
+		end
+	end
+end)
+
+--------------------------------------------------
+--// FOLLOW LOOP
+--------------------------------------------------
+
+RunService.Heartbeat:Connect(function()
+
+	if following and selectedPlayer then
+
+		if selectedPlayer.Parent ~= Players then
+
+			selectedPlayer = nil
+			stopFollow()
+			status.Text = "Người chơi đã rời server."
+
+			return
+		end
+
+		local myCharacter = LP.Character
+		local targetCharacter = selectedPlayer.Character
+
+		if myCharacter and targetCharacter then
+
+			local myRoot =
+				myCharacter:FindFirstChild("HumanoidRootPart")
+
+			local targetRoot =
+				targetCharacter:FindFirstChild("HumanoidRootPart")
+
+			if myRoot and targetRoot then
+
+				-- Luôn giữ vị trí phía sau
+				myRoot.CFrame =
+					targetRoot.CFrame * CFrame.new(0,0,4)
+
+			end
+		end
+	end
+end)
+
+--------------------------------------------------
+--// PLAYER JOIN
+--------------------------------------------------
+
+Players.PlayerAdded:Connect(function(player)
+
+	player.CharacterAdded:Connect(function()
+
+		task.wait(0.5)
+
+		removeESP(player)
+
+		if espEnabled then
+			createESP(player)
+		end
+	end)
+
+end)
+
+--------------------------------------------------
+--// PLAYER LEAVE
+--------------------------------------------------
+
+Players.PlayerRemoving:Connect(function(player)
+
+	removeESP(player)
+
+	if selectedPlayer == player then
+
+		selectedPlayer = nil
+		stopFollow()
+
+		playerListFrame.Visible = false
+
+		status.Text = "Người chơi đã rời server."
+	end
+
+end)
+
+--------------------------------------------------
+--// UPDATE LOOP
+--------------------------------------------------
+
+task.spawn(function()
+
+	while gui.Parent do
+
+		task.wait(0.1)
+
+		if espEnabled then
+			updateESP()
+		end
+	end
+end)
+
+--------------------------------------------------
+--// PLAYER HIỆN TẠI
+--------------------------------------------------
+
+for _, player in ipairs(Players:GetPlayers()) do
+
+	if player ~= LP then
+
+		getmetatable(player)
+
+		player.CharacterAdded:Connect(function()
+
+			task.wait(0.5)
+
+			removeESP(player)
+
+			if espEnabled then
+				createESP(player)
+			end
+		end)
+	end
+end
