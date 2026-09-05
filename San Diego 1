@@ -1,0 +1,638 @@
+--// NORMAL PLAYER ESP + TELEPORT + FOLLOW
+--// Roblox Studio - LocalScript
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+
+local LP = Players.LocalPlayer
+
+--------------------------------------------------
+--// SETTINGS
+--------------------------------------------------
+
+local ESP_ENABLED = false
+local FOLLOW_ENABLED = false
+
+local TELEPORT_DISTANCE = 3
+
+--------------------------------------------------
+--// GUI
+--------------------------------------------------
+
+local gui = Instance.new("ScreenGui")
+gui.Name = "SanDiegoESP"
+gui.ResetOnSpawn = false
+gui.IgnoreGuiInset = true
+gui.DisplayOrder = 999
+gui.Parent = LP:WaitForChild("PlayerGui")
+
+--------------------------------------------------
+--// MAIN
+--------------------------------------------------
+
+local main = Instance.new("Frame")
+main.Size = UDim2.fromOffset(230, 180)
+main.Position = UDim2.new(0.5, -115, 0.5, -90)
+main.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+main.BorderSizePixel = 0
+main.Parent = gui
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 8)
+corner.Parent = main
+
+--------------------------------------------------
+--// TITLE
+--------------------------------------------------
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, -40, 0, 30)
+title.Position = UDim2.fromOffset(10, 3)
+title.BackgroundTransparency = 1
+title.Text = "PLAYER MENU"
+title.TextColor3 = Color3.new(1, 1, 1)
+title.TextSize = 16
+title.Font = Enum.Font.GothamBold
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Parent = main
+
+--------------------------------------------------
+--// CLOSE
+--------------------------------------------------
+
+local close = Instance.new("TextButton")
+close.Size = UDim2.fromOffset(27, 27)
+close.Position = UDim2.new(1, -34, 0, 5)
+close.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
+close.Text = "X"
+close.TextColor3 = Color3.new(1, 1, 1)
+close.TextSize = 14
+close.Font = Enum.Font.GothamBold
+close.Parent = main
+
+local closeCorner = Instance.new("UICorner")
+closeCorner.CornerRadius = UDim.new(0, 6)
+closeCorner.Parent = close
+
+--------------------------------------------------
+--// OPEN BUTTON
+--------------------------------------------------
+
+local openButton = Instance.new("TextButton")
+openButton.Size = UDim2.fromOffset(65, 32)
+openButton.Position = UDim2.fromOffset(10, 10)
+openButton.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+openButton.Text = "OPEN"
+openButton.TextColor3 = Color3.new(1, 1, 1)
+openButton.TextSize = 13
+openButton.Font = Enum.Font.GothamBold
+openButton.Visible = false
+openButton.Parent = gui
+
+local openCorner = Instance.new("UICorner")
+openCorner.CornerRadius = UDim.new(0, 6)
+openCorner.Parent = openButton
+
+close.MouseButton1Click:Connect(function()
+	main.Visible = false
+	openButton.Visible = true
+end)
+
+openButton.MouseButton1Click:Connect(function()
+	main.Visible = true
+	openButton.Visible = false
+end)
+
+--------------------------------------------------
+--// DRAG GUI
+--------------------------------------------------
+
+local dragging = false
+local dragStart
+local startPos
+
+title.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1
+		or input.UserInputType == Enum.UserInputType.Touch then
+
+		dragging = true
+		dragStart = input.Position
+		startPos = main.Position
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+	if not dragging then
+		return
+	end
+
+	if input.UserInputType == Enum.UserInputType.MouseMovement
+		or input.UserInputType == Enum.UserInputType.Touch then
+
+		local delta = input.Position - dragStart
+
+		main.Position = UDim2.new(
+			startPos.X.Scale,
+			startPos.X.Offset + delta.X,
+			startPos.Y.Scale,
+			startPos.Y.Offset + delta.Y
+		)
+	end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1
+		or input.UserInputType == Enum.UserInputType.Touch then
+
+		dragging = false
+	end
+end)
+
+--------------------------------------------------
+--// BUTTON FUNCTION
+--------------------------------------------------
+
+local function createButton(text, y)
+	local button = Instance.new("TextButton")
+
+	button.Size = UDim2.new(1, -20, 0, 30)
+	button.Position = UDim2.fromOffset(10, y)
+
+	button.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+	button.TextColor3 = Color3.new(1, 1, 1)
+
+	button.Text = text
+	button.TextSize = 11
+	button.Font = Enum.Font.GothamBold
+
+	button.Parent = main
+
+	local c = Instance.new("UICorner")
+	c.CornerRadius = UDim.new(0, 5)
+	c.Parent = button
+
+	return button
+end
+
+--------------------------------------------------
+--// ESP
+--------------------------------------------------
+
+local espButton = createButton("ESP: OFF", 38)
+
+local espObjects = {}
+
+local function removeESP(player)
+	if espObjects[player] then
+		espObjects[player]:Destroy()
+		espObjects[player] = nil
+	end
+end
+
+local function createESP(player)
+	if player == LP then
+		return
+	end
+
+	removeESP(player)
+
+	local character = player.Character
+	if not character then
+		return
+	end
+
+	local highlight = Instance.new("Highlight")
+	highlight.Name = "PlayerESP"
+	highlight.FillTransparency = 0.65
+	highlight.OutlineTransparency = 0
+	highlight.Adornee = character
+	highlight.Parent = character
+
+	espObjects[player] = highlight
+end
+
+local function refreshESP()
+	for _, player in ipairs(Players:GetPlayers()) do
+		if player ~= LP then
+			if ESP_ENABLED then
+				createESP(player)
+			else
+				removeESP(player)
+			end
+		end
+	end
+end
+
+espButton.MouseButton1Click:Connect(function()
+	ESP_ENABLED = not ESP_ENABLED
+
+	espButton.Text =
+		ESP_ENABLED and "ESP: ON" or "ESP: OFF"
+
+	refreshESP()
+end)
+
+--------------------------------------------------
+--// TELEPORT
+--------------------------------------------------
+
+local teleportButton =
+	createButton("TELEPORT: RANDOM PLAYER", 73)
+
+local followTarget = nil
+
+--------------------------------------------------
+--// PLAYER LIST
+--------------------------------------------------
+
+local playerListFrame = Instance.new("Frame")
+playerListFrame.Name = "PlayerList"
+playerListFrame.Size = UDim2.fromOffset(230, 300)
+playerListFrame.Position = UDim2.new(0.5, -115, 0.5, -150)
+playerListFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+playerListFrame.BorderSizePixel = 0
+playerListFrame.Visible = false
+playerListFrame.ZIndex = 20
+playerListFrame.Parent = gui
+
+local listCorner = Instance.new("UICorner")
+listCorner.CornerRadius = UDim.new(0, 8)
+listCorner.Parent = playerListFrame
+
+--------------------------------------------------
+--// LIST TITLE
+--------------------------------------------------
+
+local listTitle = Instance.new("TextLabel")
+listTitle.Size = UDim2.new(1, -40, 0, 30)
+listTitle.Position = UDim2.fromOffset(10, 5)
+listTitle.BackgroundTransparency = 1
+listTitle.Text = "PLAYER LIST"
+listTitle.TextColor3 = Color3.new(1, 1, 1)
+listTitle.TextSize = 15
+listTitle.Font = Enum.Font.GothamBold
+listTitle.TextXAlignment = Enum.TextXAlignment.Left
+listTitle.ZIndex = 21
+listTitle.Parent = playerListFrame
+
+--------------------------------------------------
+--// CLOSE LIST
+--------------------------------------------------
+
+local listClose = Instance.new("TextButton")
+listClose.Size = UDim2.fromOffset(25, 25)
+listClose.Position = UDim2.new(1, -30, 0, 5)
+listClose.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
+listClose.Text = "X"
+listClose.TextColor3 = Color3.new(1, 1, 1)
+listClose.TextSize = 13
+listClose.Font = Enum.Font.GothamBold
+listClose.ZIndex = 21
+listClose.Parent = playerListFrame
+
+local listCloseCorner = Instance.new("UICorner")
+listCloseCorner.CornerRadius = UDim.new(0, 5)
+listCloseCorner.Parent = listClose
+
+--------------------------------------------------
+--// SCROLL
+--------------------------------------------------
+
+local playerScroll = Instance.new("ScrollingFrame")
+playerScroll.Size = UDim2.new(1, -20, 1, -45)
+playerScroll.Position = UDim2.fromOffset(10, 40)
+playerScroll.BackgroundTransparency = 1
+playerScroll.BorderSizePixel = 0
+playerScroll.ScrollBarThickness = 4
+playerScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+playerScroll.ZIndex = 21
+playerScroll.Parent = playerListFrame
+
+local listLayout = Instance.new("UIListLayout")
+listLayout.Padding = UDim.new(0, 5)
+listLayout.SortOrder = Enum.SortOrder.Name
+listLayout.Parent = playerScroll
+
+--------------------------------------------------
+--// PLAYER TEAM
+--------------------------------------------------
+
+local function getPlayerRole(player)
+	if player.Team then
+		return player.Team.Name
+	end
+
+	return "Không có Team"
+end
+
+--------------------------------------------------
+--// TELEPORT TO PLAYER
+--------------------------------------------------
+
+local function teleportToPlayer(player)
+
+	if not player or player == LP then
+		return
+	end
+
+	local myCharacter = LP.Character
+	local targetCharacter = player.Character
+
+	local myRoot =
+		myCharacter and
+		myCharacter:FindFirstChild("HumanoidRootPart")
+
+	local targetRoot =
+		targetCharacter and
+		targetCharacter:FindFirstChild("HumanoidRootPart")
+
+	if not myRoot or not targetRoot then
+		return
+	end
+
+	-- Teleport ra phía sau player
+	myRoot.CFrame =
+		targetRoot.CFrame *
+		CFrame.new(
+			0,
+			0,
+			TELEPORT_DISTANCE
+		)
+
+	-- Tự động FOLLOW người vừa chọn
+	followTarget = player
+	FOLLOW_ENABLED = true
+
+	followButton.Text = "FOLLOW: ON"
+
+	-- Đóng danh sách
+	playerListFrame.Visible = false
+end
+
+--------------------------------------------------
+--// REFRESH PLAYER LIST
+--------------------------------------------------
+
+local function refreshPlayerList()
+
+	for _, child in ipairs(playerScroll:GetChildren()) do
+		if child:IsA("TextButton") then
+			child:Destroy()
+		end
+	end
+
+	for _, player in ipairs(Players:GetPlayers()) do
+
+		if player ~= LP then
+
+			local playerButton =
+				Instance.new("TextButton")
+
+			playerButton.Size =
+				UDim2.new(1, -5, 0, 42)
+
+			playerButton.BackgroundColor3 =
+				Color3.fromRGB(45, 45, 45)
+
+			playerButton.TextColor3 =
+				Color3.new(1, 1, 1)
+
+			playerButton.TextSize = 11
+			playerButton.Font =
+				Enum.Font.GothamBold
+
+			playerButton.Text =
+				player.Name ..
+				" | " ..
+				getPlayerRole(player)
+
+			playerButton.TextXAlignment =
+				Enum.TextXAlignment.Left
+
+			playerButton.ZIndex = 22
+			playerButton.Parent =
+				playerScroll
+
+			local buttonCorner =
+				Instance.new("UICorner")
+
+			buttonCorner.CornerRadius =
+				UDim.new(0, 5)
+
+			buttonCorner.Parent =
+				playerButton
+
+			playerButton.MouseButton1Click:Connect(
+				function()
+					teleportToPlayer(player)
+				end
+			)
+		end
+	end
+
+	task.wait()
+
+	playerScroll.CanvasSize =
+		UDim2.fromOffset(
+			0,
+			listLayout.AbsoluteContentSize.Y + 5
+		)
+end
+
+--------------------------------------------------
+--// OPEN PLAYER LIST
+--------------------------------------------------
+
+teleportButton.MouseButton1Click:Connect(function()
+
+	refreshPlayerList()
+
+	playerListFrame.Visible =
+		not playerListFrame.Visible
+end)
+
+listClose.MouseButton1Click:Connect(function()
+	playerListFrame.Visible = false
+end)
+
+--------------------------------------------------
+--// FOLLOW
+--------------------------------------------------
+
+local followButton =
+	createButton("FOLLOW: OFF", 108)
+
+local function getClosestPlayer()
+
+	local closest
+	local shortest = math.huge
+
+	local character = LP.Character
+
+	local root =
+		character and
+		character:FindFirstChild(
+			"HumanoidRootPart"
+		)
+
+	if not root then
+		return nil
+	end
+
+	for _, player in ipairs(
+		Players:GetPlayers()
+	) do
+
+		if player ~= LP and player.Character then
+
+			local targetRoot =
+				player.Character:FindFirstChild(
+					"HumanoidRootPart"
+				)
+
+			local humanoid =
+				player.Character:FindFirstChildOfClass(
+					"Humanoid"
+				)
+
+			if targetRoot
+				and humanoid
+				and humanoid.Health > 0 then
+
+				local distance =
+					(root.Position -
+						targetRoot.Position).Magnitude
+
+				if distance < shortest then
+
+					shortest = distance
+					closest = player
+				end
+			end
+		end
+	end
+
+	return closest
+end
+
+followButton.MouseButton1Click:Connect(function()
+
+	FOLLOW_ENABLED =
+		not FOLLOW_ENABLED
+
+	if FOLLOW_ENABLED then
+		followTarget =
+			getClosestPlayer()
+	else
+		followTarget = nil
+	end
+
+	followButton.Text =
+		FOLLOW_ENABLED
+		and "FOLLOW: ON"
+		or "FOLLOW: OFF"
+end)
+
+--------------------------------------------------
+--// MAIN LOOP
+--------------------------------------------------
+
+RunService.RenderStepped:Connect(function()
+
+	--------------------------------------------------
+	--// FOLLOW
+	--------------------------------------------------
+
+	if FOLLOW_ENABLED and followTarget then
+
+		local myCharacter =
+			LP.Character
+
+		local targetCharacter =
+			followTarget.Character
+
+		local myRoot =
+			myCharacter and
+			myCharacter:FindFirstChild(
+				"HumanoidRootPart"
+			)
+
+		local targetRoot =
+			targetCharacter and
+			targetCharacter:FindFirstChild(
+				"HumanoidRootPart"
+			)
+
+		if myRoot and targetRoot then
+
+			myRoot.CFrame =
+				targetRoot.CFrame *
+				CFrame.new(
+					0,
+					0,
+					TELEPORT_DISTANCE
+				)
+
+		else
+
+			followTarget = nil
+			FOLLOW_ENABLED = false
+			followButton.Text =
+				"FOLLOW: OFF"
+		end
+	end
+end)
+
+--------------------------------------------------
+--// PLAYER EVENTS
+--------------------------------------------------
+
+Players.PlayerAdded:Connect(function(player)
+
+	player.CharacterAdded:Connect(function()
+
+		task.wait(0.5)
+
+		if ESP_ENABLED then
+			createESP(player)
+		end
+
+	end)
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+
+	removeESP(player)
+
+	if followTarget == player then
+
+		followTarget = nil
+		FOLLOW_ENABLED = false
+
+		followButton.Text =
+			"FOLLOW: OFF"
+	end
+end)
+
+--------------------------------------------------
+--// INITIAL CHARACTER EVENTS
+--------------------------------------------------
+
+for _, player in ipairs(
+	Players:GetPlayers()
+) do
+
+	if player ~= LP then
+
+		player.CharacterAdded:Connect(function()
+
+			task.wait(0.5)
+
+			if ESP_ENABLED then
+				createESP(player)
+			end
+
+		end)
+	end
+end
